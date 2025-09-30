@@ -1,0 +1,306 @@
+name: Design Review
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  design-review:
+    # Only run on pull request comments that mention the design review trigger
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '@design-review')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get PR information
+        id: pr-info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            // Set the PR branch as the head ref
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('head_sha', pr.head.sha);
+
+      - name: Checkout PR branch
+        run: |
+          git checkout ${{ steps.pr-info.outputs.head_ref }}
+          git pull origin ${{ steps.pr-info.outputs.head_ref }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, iconv, json, mbstring, redis
+          tools: composer:v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Set up environment file
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Create database and run migrations
+        run: |
+          touch database/database.sqlite
+          php artisan migrate --database=sqlite --force
+          php artisan db:seed --database=sqlite --force
+
+      - name: Start Laravel development server
+        run: |
+          php artisan serve --host=0.0.0.0 --port=8000 &
+          sleep 10
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+
+      - name: Install Playwright
+        run: |
+          npm install -g @playwright/test
+          npx playwright install chromium
+
+      - name: Generate design review content
+        id: review-content
+        run: |
+          # Get git status
+          GIT_STATUS=$(git status --porcelain || echo "Clean working directory")
+
+          # Get modified files
+          MODIFIED_FILES=$(git diff --name-only ${{ steps.pr-info.outputs.base_ref }}..HEAD || echo "No files modified")
+
+          # Get commit log
+          COMMIT_LOG=$(git log --oneline ${{ steps.pr-info.outputs.base_ref }}..HEAD || echo "No commits found")
+
+          # Get diff content (truncated to avoid too much data)
+          DIFF_CONTENT=$(git diff --merge-base ${{ steps.pr-info.outputs.base_ref }} HEAD | head -c 50000 || echo "No diff available")
+
+          # Create review prompt
+          cat > design-review-prompt.md << 'EOF'
+          You are an elite design review specialist conducting a comprehensive design review of this Laravel application's changes.
+
+          **GIT STATUS:**
+          ```
+          $GIT_STATUS
+          ```
+
+          **FILES MODIFIED:**
+          ```
+          $MODIFIED_FILES
+          ```
+
+          **COMMITS:**
+          ```
+          $COMMIT_LOG
+          ```
+
+          **DIFF CONTENT:**
+          ```
+          $DIFF_CONTENT
+          ```
+
+          **OBJECTIVE:**
+          Conduct a comprehensive design review following the methodology in .claude/agents/design-review.md.
+
+          The application is running at http://localhost:8000. Please:
+
+          1. Navigate to the application and test the main user flows
+          2. Test responsiveness across desktop (1440px), tablet (768px), and mobile (375px) viewports
+          3. Verify accessibility compliance (WCAG 2.1 AA)
+          4. Check for visual consistency and design system adherence
+          5. Test interactive states and user experience
+          6. Validate console output for errors
+          7. Provide a comprehensive markdown report with screenshots
+
+          Focus especially on any candidate-facing interfaces, authentication flows, and assessment-taking experiences based on the code changes.
+
+          Please follow the design principles in docs/design-principles.md if available.
+          EOF
+
+      - name: Run Playwright-based Design Review
+        id: playwright-review
+        run: |
+          # Create a simple Playwright script for design review
+          cat > design-review.js << 'EOF'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch();
+            const context = await browser.newContext();
+            const page = await context.newPage();
+
+            const report = [];
+
+            try {
+              // Navigate to the application
+              await page.goto('http://localhost:8000');
+              await page.waitForLoadState('networkidle');
+
+              // Take initial screenshot
+              await page.screenshot({ path: 'screenshot-home.png', fullPage: true });
+
+              // Check console for errors
+              const consoleMessages = [];
+              page.on('console', msg => consoleMessages.push(`${msg.type()}: ${msg.text()}`));
+
+              // Test responsive design
+              await page.setViewportSize({ width: 1440, height: 900 });
+              await page.screenshot({ path: 'screenshot-desktop.png', fullPage: true });
+
+              await page.setViewportSize({ width: 768, height: 1024 });
+              await page.screenshot({ path: 'screenshot-tablet.png', fullPage: true });
+
+              await page.setViewportSize({ width: 375, height: 667 });
+              await page.screenshot({ path: 'screenshot-mobile.png', fullPage: true });
+
+              // Basic accessibility check
+              await page.keyboard.press('Tab');
+              const focusedElement = await page.evaluate(() => document.activeElement.tagName);
+
+              report.push('## Design Review Results');
+              report.push('');
+              report.push('### Screenshots Captured');
+              report.push('- Desktop (1440px): screenshot-desktop.png');
+              report.push('- Tablet (768px): screenshot-tablet.png');
+              report.push('- Mobile (375px): screenshot-mobile.png');
+              report.push('');
+
+              if (consoleMessages.length > 0) {
+                report.push('### Console Messages');
+                consoleMessages.forEach(msg => report.push(`- ${msg}`));
+                report.push('');
+              }
+
+              report.push('### Basic Accessibility Check');
+              report.push(`- Tab navigation working: ${focusedElement !== 'BODY'}`);
+              report.push('');
+
+              report.push('### Application Status');
+              report.push('- Application loads successfully ✅');
+              report.push('- Responsive design tested across viewports ✅');
+              report.push('- Screenshots captured for visual review ✅');
+
+            } catch (error) {
+              report.push('## Error During Review');
+              report.push(`Error: ${error.message}`);
+            }
+
+            await browser.close();
+
+            // Write report
+            fs.writeFileSync('design-review-results.md', report.join('\n'));
+            console.log('Design review completed');
+          })();
+          EOF
+
+          node design-review.js
+
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-review-screenshots
+          path: screenshot-*.png
+          retention-days: 30
+
+      - name: Create Design Review Report
+        id: create-report
+        run: |
+          # Combine the review prompt and results
+          echo "## 🎨 Design Review Report" > final-report.md
+          echo "" >> final-report.md
+          echo "*Automated design review triggered by @design-review*" >> final-report.md
+          echo "" >> final-report.md
+
+          # Add git information
+          echo "### 📋 Change Summary" >> final-report.md
+          echo "" >> final-report.md
+          echo "**Modified Files:**" >> final-report.md
+          git diff --name-only ${{ steps.pr-info.outputs.base_ref }}..HEAD | while read file; do
+            echo "- \`$file\`" >> final-report.md
+          done
+          echo "" >> final-report.md
+
+          echo "**Commits in this PR:**" >> final-report.md
+          git log --oneline ${{ steps.pr-info.outputs.base_ref }}..HEAD | while read commit; do
+            echo "- $commit" >> final-report.md
+          done
+          echo "" >> final-report.md
+
+          # Add the automated review results
+          if [ -f design-review-results.md ]; then
+            cat design-review-results.md >> final-report.md
+          fi
+
+          echo "" >> final-report.md
+          echo "### 🤖 Automated Review Notes" >> final-report.md
+          echo "" >> final-report.md
+          echo "This is an automated design review that provides basic visual and technical validation." >> final-report.md
+          echo "For a comprehensive design review with detailed UX analysis, consider running the" >> final-report.md
+          echo "design review process with Claude Code locally using the \`/design-review\` command." >> final-report.md
+          echo "" >> final-report.md
+          echo "**Next Steps:**" >> final-report.md
+          echo "1. Review the captured screenshots for visual issues" >> final-report.md
+          echo "2. Test the application manually for user experience" >> final-report.md
+          echo "3. Validate accessibility compliance" >> final-report.md
+          echo "4. Check responsive design across all target devices" >> final-report.md
+
+          # Set the report content as output (truncated for GitHub's limits)
+          REPORT_CONTENT=$(head -c 60000 final-report.md)
+          echo "REPORT_CONTENT<<EOF" >> $GITHUB_OUTPUT
+          echo "$REPORT_CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reportContent = `${{ steps.create-report.outputs.REPORT_CONTENT }}`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reportContent
+            });
+
+      - name: React to original comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '+1'
+            });

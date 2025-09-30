@@ -1,0 +1,86 @@
+
+name: 'Setup'
+description: 'Sets up PHP and Composer'
+
+inputs:
+  php-version:
+    description: 'The PHP version(s) you wish to use.'
+    required: true
+  php-extensions:
+    description: 'The PHP extensions you want to install.'
+    required: false
+    default: 'dom, curl, libxml, mbstring, zip, pcntl, pdo, gd, redis, igbinary, msgpack, zstd, lz4, gmp,  bcmath, soap, intl, exif, iconv, :php-psr'
+  composer-auth-json:
+    description: 'auth.json file for authenticating composer private packages.'
+    required: true
+  coverage:
+    description: 'The coverage driver to use.'
+    required: false
+    default: 'none'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Get PHP extension cache hash'
+      id: get-cache-hash
+      shell: bash
+      env:
+        PHP_EXTENSIONS: ${{ inputs.php-extensions }}
+      run: echo hash=$(echo "$PHP_EXTENSIONS" | md5sum | awk '{print $1}') >> $GITHUB_OUTPUT
+
+    - name: Get PHP extension cache hash
+      id: extensions-cache-hash
+      env:
+        PHP_EXTENSIONS: ${{ inputs.php-extensions }}
+      run: echo hash=$(echo "$PHP_EXTENSIONS" | md5sum | awk '{print $1}') >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Setup cache environment
+      id: extensions-cache
+      uses: shivammathur/cache-extensions@v1
+      if: inputs.php-extensions == true
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: ${{ inputs.php-extensions }}
+        key: php-extensions-${{ steps.extensions-cache-hash.outputs.hash }}
+
+    - name: Cache extensions
+      uses: actions/cache@v4
+      if: inputs.php-extensions == true
+      with:
+        path: ${{ steps.extensions-cache.outputs.dir }}
+        key: ${{ steps.extensions-cache.outputs.key }}
+        restore-keys: ${{ steps.extensions-cache.outputs.key }}
+
+    - name: Setup PHP and Composer
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: ${{ inputs.php-extensions }}
+        coverage: ${{ inputs.coverage }}
+
+    - name: Get Composer cache dir
+      id: composer-cache-dir
+      run: echo dir=$(composer config cache-files-dir) >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        key: composer-cache-${{ hashFiles('**/composer.lock') }}
+        path: ${{ steps.composer-cache-dir.outputs.dir }}
+        restore-keys: composer-cache-
+
+    - name: Add authentication credentials for Composer (auth.json)
+      run: echo '${{ inputs.composer-auth-json }}' > $GITHUB_WORKSPACE/auth.json
+      shell: bash
+
+    - name: Directory Permissions
+      run: chmod -R 777 storage bootstrap/cache reports
+      shell: bash
+
+#    - name: Save commit hash
+#      run: echo ${{ github.sha }} >> .release_hash
+#      #run: php artisan rad:save-release-hash-to-file
+#      shell: bash
+

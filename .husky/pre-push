@@ -1,0 +1,63 @@
+#!/bin/sh
+
+# Stop script on error
+set -e
+
+# Assigns standard input to the keyboard
+# Allows us to read user input
+if sh -c ": >/dev/tty" >/dev/null 2>/dev/null; then
+    exec < /dev/tty
+fi
+
+run_tests()
+{
+    COMMAND="composer test-parallel"
+
+    if [ "$1" == "recreate" ]; then
+        COMMAND="$COMMAND --recreate-databases"
+    fi
+
+    echo "Running: $COMMAND"
+
+    if ! $COMMAND; then
+
+        echo
+        echo "Tests failed."
+        echo "r = rerun with --recreate-databases"
+        echo "Push anyway? (y/r/N)"
+
+        printf "> "
+        read -r REPLY
+
+        if [ "$REPLY" == "R" ] || [ "$REPLY" == "r" ]; then
+            run_tests recreate
+            return;
+        elif [ "$REPLY" != "Y" ] && [ "$REPLY" != "y" ]; then
+            echo "Aborting push."
+            exit 1
+        fi
+    fi
+}
+
+
+echo
+echo "Run tests before pushing? (Y/n)"
+printf "> "
+read -r REPLY
+
+if [ "$REPLY" != "Y" ] && [ "$REPLY" != "y" ] && [ "$REPLY" != "" ]; then
+    echo "Skipping tests"
+    echo "$REPLY";
+
+    exit 0
+fi
+
+run_tests;
+
+echo
+echo
+echo "Pushing changes..."
+echo
+echo
+
+exit 0

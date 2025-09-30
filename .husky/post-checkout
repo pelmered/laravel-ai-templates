@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if [[ $SKIP_POST_CHECKOUT = 1 ]]
+then
+  echo "Skipping post checkout script"
+
+  exit 0
+fi
+
+echo "Running post checkout script..."
+
+php artisan cache:clear
+composer install --ignore-platform-reqs
+composer dumpautoload
+#php artisan test

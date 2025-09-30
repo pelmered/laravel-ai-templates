@@ -1,0 +1,104 @@
+
+name: Check & fix code
+
+on:
+  push:
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  code-fix:
+    runs-on: ubuntu-latest
+
+    env:
+      APP_ENV: ci
+      APP_KEY: ${{ secrets.APP_KEY }}
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.sqlite
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Fetch the last 2 commits instead of just 1.
+          # Fetching just 1 commit would overwrite the whole history when amending the commit in the last step.
+          fetch-depth: 2
+          # See https://github.com/stefanzweifel/git-auto-commit-action?tab=readme-ov-file#checkout-the-correct-branch
+          ref: ${{ github.head_ref }}
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          composer-auth-json: ${{ secrets.COMPOSER_AUTH_JSON }}
+          coverage: xdebug
+
+      - name: Install Dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-suggest --no-progress --prefer-dist --optimize-autoloader
+
+      -   name: Project setup
+          run: |
+            php -r "file_exists('.env') || copy('.env.ci', '.env');"
+            chmod -R 777 storage bootstrap/cache
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          list-files: shell
+          filters: |
+            php:
+            - added|modified: '**.php'
+
+#      - name: Fix code with PHP Insights
+#        run: php artisan insights ${{ steps.filter.outputs.php_files }} --fix --no-interaction --ansi --format=github-action
+
+      #- name: Run PHP Insights
+      #  if: ${{ steps.filter.outputs.php == 'true' }}
+      #  run: vendor/bin/phpinsights analyse ${{ steps.filter.outputs.php_files }} --no-interaction --ansi --format=github-action --min-style=90
+
+      - name: Refactor code with Rector
+        run: vendor/bin/rector --ansi
+
+      - name: Fix code style with Pint
+        uses: aglipanci/laravel-pint-action@latest
+        with:
+          verboseMode: true
+          onlyDirty: true
+          configPath: ./pint.json
+
+#      - name: Get last commit info
+#        id: last-commit
+#        run: |
+#          echo "message=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+#          echo "author=$(git log -1 --pretty=\"%an <%ae>\")" >> $GITHUB_OUTPUT
+
+
+#      - name: Import GPG key
+#        id: import-gpg
+#        uses: step-security/ghaction-import-gpg@v6
+#        with:
+#          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+#          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+#          git_user_signingkey: true
+#          git_commit_gpgsign: true
+
+      -   name: Commit changes
+          uses: stefanzweifel/git-auto-commit-action@v5
+          with:
+            commit_author: "Peter Elmered <peter@elmered.com>"
+            commit_user_name: "Peter Elmered"
+            commit_user_email: "peter@elmered.com"
+            #commit_author: "${{ steps.import-gpg.outputs.name }} <${{ steps.import-gpg.outputs.email }}>"
+            #commit_user_name: ${{ steps.import-gpg.outputs.name }}
+            #commit_user_email: ${{ steps.import-gpg.outputs.email }}
+            commit_message: "Auto fix code"
+            #commit_options: '--amend --no-edit'
+            #commit_options: '--gpg-sign --amend --no-edit'
+            #push_options: '--force'
+            skip_fetch: true
+          env:
+            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+

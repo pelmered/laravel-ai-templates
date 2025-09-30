@@ -1,0 +1,45 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+registries:
+  flux-ui:
+    type: composer-repository
+    url: composer.fluxui.dev
+    username: peter@elmered.com
+    password: ${{secrets.FLUX_UI_PASSWORD}}
+updates:
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "dev"
+    # Allow up to 10 open pull requests for composer dependencies
+    #open-pull-requests-limit: 20
+    # Disable updates
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "Composer"
+      include: "scope"
+    labels:
+      - "composer"
+      - "dependencies"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    target-branch: "dev"
+    # Allow up to 5 open pull requests for NPM dependencies
+    #open-pull-requests-limit: 5
+    # Disable updates
+    open-pull-requests-limit: 0
+    labels:
+      - "npm"
+      - "dependencies"
+    commit-message:
+      prefix: "NPM"
+      include: "scope"

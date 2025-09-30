@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff"
+          },
+          {
+            "type": "command",
+            "command": "composer run code-style"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Funk.aiff"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./vendor/bin/pest:*)",
+      "Bash(./vendor/bin/phpstan analyse:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(claude mcp:*)",
+      "Bash(composer check:*)",
+      "Bash(composer install:*)",
+      "Bash(composer reset-test-db:*)",
+      "Bash(composer run check:*)",
+      "Bash(composer show:*)",
+      "Bash(composer test:*)",
+      "Bash(gh pr checkout:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git add .ai/)",
+      "Bash(git add .claude/)",
+      "Bash(git add .editorconfig)",
+      "Bash(git add .github/)",
+      "Bash(git add .mcp.json)",
+      "Bash(git add CLAUDE.md)",
+      "Bash(git add database/:*)",
+      "Bash(git add docs/)",
+      "Bash(git add phpunit.xml)",
+      "Bash(git add resources/)",
+      "Bash(git add src/:*)",
+      "Bash(git add tailwind.config.js)",
+      "Bash(git add tests/)",
+      "Bash(git checkout:*)",
+      "Bash(git diff:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx tsc:*)",
+      "Bash(php -l:*)",
+      "Bash(php artisan ddd:*)",
+      "Bash(php artisan dusk:*)",
+      "Bash(php artisan make:*)",
+      "Bash(php artisan make:filament-resource:*)",
+      "Bash(php artisan make:policy:*)",
+      "Bash(php artisan migrate)",
+      "Bash(php artisan migrate:status)",
+      "Bash(php artisan migrate:status:*)",
+      "Bash(php artisan optimize:clear:*)",
+      "Bash(php artisan route:*)",
+      "Bash(php artisan test)",
+      "Bash(php artisan test:*)",
+      "Bash(php artisan tinker)",
+      "Bash(php artisan view:clear:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python -m pytest tests/test_job_ad_service.py -v)",
+      "Bash(source:*)",
+      "Bash(timeout 10s php artisan test:*)",
+      "Bash(timeout 20s php artisan test:*)",
+      "Bash(timeout 30s php artisan test:*)",
+      "Bash(timeout 2000s vendor/bin/pest --testsuite browser)",
+      "Bash(uvicorn:*)",
+      "Bash(vendor/bin/pest:*)",
+      "Bash(vendor/bin/pint:*)",
+      "WebFetch(domain:docs.sentry.io)",
+      "WebFetch(domain:filamentphp.com)",
+      "WebFetch(domain:fluxui.dev)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:icanhazdadjoke.com)",
+      "WebFetch(domain:pestphp.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:spatie.be)",
+      "WebFetch(domain:v4.pestphp.com)",
+      "WebSearch",
+      "mcp__Buildable__get_next_task",
+      "mcp__Buildable__get_project_context",
+      "mcp__Buildable__health_check",
+      "mcp__Buildable__start_task",
+      "mcp__Buildable__update_progress",
+      "mcp__Linear__get_issue",
+      "mcp__context-coder__get_codebase_size",
+      "mcp__DigitalOcean__list_app_regions",
+      "mcp__DigitalOcean__list_apps",
+      "mcp__DigitalOcean__list_databases_cluster",
+      "mcp__gemini-cli__ask-gemini",
+      "mcp__laravel-boost__application-info",
+      "mcp__laravel-boost__database-connections",
+      "mcp__laravel-boost__database-query",
+      "mcp__laravel-boost__database-schema",
+      "mcp__laravel-boost__get-absolute-url",
+      "mcp__laravel-boost__get-config",
+      "mcp__laravel-boost__last-error",
+      "mcp__laravel-boost__list-artisan-commands",
+      "mcp__laravel-boost__list-available-config-keys",
+      "mcp__laravel-boost__list-available-env-vars",
+      "mcp__laravel-boost__list-routes",
+      "mcp__laravel-boost__read-log-entries",
+      "mcp__laravel-boost__search-docs",
+      "mcp__linear__get_issue",
+      "mcp__linear__list_users",
+      "mcp__linear-server__get_issue",
+      "mcp__linear-server__list_issue_statuses",
+      "mcp__linear-server__list_users",
+      "mcp__mcp_server_mysql__mysql_query",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_wait_for",
+      "mcp__linear__list_teams",
+      "Bash(composer:*)",
+      "Bash(find:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run test:*)",
+      "Read(~/.zshrc)",
+      "WebFetch(domain:docs.anthropic.com)"
+    ],
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(php artisan db:*)"
+    ]
+  },
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "180000",
+    "BASH_MAX_TIMEOUT_MS": "7200000",
+    "MAX_THINKING_TOKENS": "31999",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000"
+  },
+  "includeCoAuthoredBy": false,
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "linear",
+    "playwright",
+    "laravel-boost"
+  ]
+}

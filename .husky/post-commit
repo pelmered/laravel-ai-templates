@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# Stop script on error
+set -e
+
+# Assigns standard input to the keyboard
+# Allows us to read user input
+if sh -c ": >/dev/tty" >/dev/null 2>/dev/null; then
+    exec < /dev/tty
+fi
+
+# Get changed files form last commit
+ALL_CHANGED_FILES=$(git diff --name-only HEAD HEAD~1 | grep \\.php | xargs)
+CHANGED_FILES=""
+
+# Filter out any files that does not exist (that was removed in the commit)
+# Otherwise we will get "fatal: pathspec" and pint errors
+for file in $ALL_CHANGED_FILES; do
+    if [ -f $file ]; then
+        CHANGED_FILES="$CHANGED_FILES $file"
+    fi
+done
+
+if [ -z "$CHANGED_FILES" ]; then
+    echo "No PHP files changed in commit"
+    exit 0
+fi
+
+echo "The following files will be analyzed by Rector:"
+echo "$CHANGED_FILES"
+echo
+
+# We are expecting a non-zero exit code if rector finds something.
+# We need to temporarily disable `set -e` or use an if condition.
+# The `if ! ...` structure handles this gracefully.
+# shellcheck disable=SC2086
+if ! vendor/bin/rector process --dry-run $CHANGED_FILES; then
+    echo
+    echo "Rector found potential improvements."
+    echo "Apply them to the commit? (Y/n)"
+    printf "> "
+    read -r REPLY
+
+    # Default to "y" if REPLY is empty
+    if [ "$REPLY" = "n" ] || [ "$REPLY" = "N" ]; then
+        echo "Skipping Rector changes."
+        exit 0
+    fi
+
+    echo "Applying Rector changes and amending commit..."
+    vendor/bin/rector process $CHANGED_FILES
+
+    git add $CHANGED_FILES
+    git commit --amend --no-edit --no-verify
+
+    echo "Rector changes applied."
+else
+    echo "Well done! No code improvements found in commit."
+fi
+
+echo
+echo "Running Pint..."
+# shellcheck disable=SC2086
+if ! vendor/bin/pint $CHANGED_FILES; then
+
+    echo "Applying Pint changes and amending commit..."
+    git add $CHANGED_FILES
+    git commit --amend --no-edit --no-verify
+else
+    echo "Well done! No code style improvements found in commit."
+fi
+
+exit 0
