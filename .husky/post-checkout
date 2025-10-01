@@ -9,7 +9,5 @@ fi
 
 echo "Running post checkout script..."
 
-php artisan cache:clear
+php artisan optimize:clear
 composer install --ignore-platform-reqs
-composer dumpautoload
-#php artisan test

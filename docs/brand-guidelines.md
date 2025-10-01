@@ -12,16 +12,16 @@ Our logo is the core of our identity. Always use the primary logo if possible. A
 The logo is available in a vertical and a horizontal variant. Use the one that best suits its placement. The graphic element and text part can also be used separately.
 
 ### Horizontal logo
-SVG: `public/images/logo/svg/horizontal_logo_vectorized.svg`
+SVG: `public/images/logo/svg/logo_horizontal.svg`
 PNG: `public/images/logo/png/logo_horizontal.png`
 
 ### Vertical logo
-SVG: `public/images/logo/svg/vertical_logo_vectorized.svg`
+SVG: `public/images/logo/svg/logo_vertical.svg`
 PNG: `public/images/logo/png/logo_vertical.png`
 
 ### Only graphic element
-SVG: `public/images/logo/svg/main_graphic_vectorized.svg`
-PNG: `public/images/logo/png/main_graphic.png`
+SVG: `public/images/logo/svg/graphic_only.svg`
+PNG: `public/images/logo/png/graphic_only.png`
 
 ## Colors
 

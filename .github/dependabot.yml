@@ -8,7 +8,7 @@ registries:
   flux-ui:
     type: composer-repository
     url: composer.fluxui.dev
-    username: peter@elmered.com
+    username: user@example.com
     password: ${{secrets.FLUX_UI_PASSWORD}}
 updates:
   - package-ecosystem: "composer"
