@@ -36,6 +36,6 @@ Review the complete diff above. This contains all code changes in the PR.
 OBJECTIVE:
 Use the design-reviewer agent to comprehensively review the complete diff above, and reply back to the user with the design and review of the report. Your final reply must contain the markdown report and nothing else.
 
-Follow and implement the design principles and style guide located in the ../docs/design-principles.md and ../context/style-guide.md docs.
+Follow and implement the design principles and style guide located in the ../docs/design-principles.md and ../docs/style-guide.md docs.
 
 Be critical and find as many issues as you can. Don't hold back.
